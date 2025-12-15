@@ -1,0 +1,7 @@
+{
+  "name": "EazyBiz AI",
+  "description": "Voice-First Growth OS for Indian Real Estate & Construction. Offline-first voice logging for field agents.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
