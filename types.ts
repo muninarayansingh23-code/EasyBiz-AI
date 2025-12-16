@@ -2,6 +2,14 @@ import React from 'react';
 
 export type UserRole = 'super_admin' | 'business_owner' | 'agent' | null;
 
+export interface UserPermissions {
+  can_create_ads?: boolean;
+  can_view_leads?: boolean;
+  can_access_site?: boolean;
+  can_view_roi?: boolean;
+  can_manage_team?: boolean;
+}
+
 export interface UserProfile {
   uid: string;
   phoneNumber: string;
@@ -9,6 +17,8 @@ export interface UserProfile {
   tenantId?: string;
   is_active: boolean;
   name?: string;     // Optional display name
+  status?: string;   // Added status field (e.g. 'invited')
+  permissions?: UserPermissions; // Fine-grained permissions
   createdAt?: any;
 }
 
@@ -46,7 +56,15 @@ export interface Lead {
 }
 
 export interface NavItem {
+  key: string; // Unique key for routing
   label: string;
   path: string;
   icon: React.ElementType;
+}
+
+export interface AppPermissions {
+  canManageTeam: boolean;
+  canViewAds: boolean;
+  canViewSiteOps: boolean;
+  canViewLeads: boolean;
 }

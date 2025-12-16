@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { MOCK_TENANTS, MOCK_GLOBAL_STATS } from '../lib/mockData';
+import { MOCK_TENANTS } from '../lib/mockData';
 import {
-  IndianRupee, Users, Activity, MoreVertical,
-  ExternalLink, Ban, Search, Filter
+  MoreVertical, ExternalLink, Ban, Search, Filter
 } from 'lucide-react';
+import PlatformStats from './PlatformStats';
 
 const SuperAdminDashboard: React.FC = () => {
   const [activeMenu, setActiveMenu] = useState<number | null>(null);
@@ -34,36 +34,8 @@ const SuperAdminDashboard: React.FC = () => {
             </div>
         </div>
 
-        {/* Stats Row */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-                <div>
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Total Revenue (MRR)</p>
-                    <h3 className="text-2xl font-black text-slate-900">₹{MOCK_GLOBAL_STATS.totalMRR.toLocaleString()}</h3>
-                </div>
-                <div className="h-10 w-10 bg-indigo-50 text-indigo-600 rounded-lg flex items-center justify-center">
-                    <IndianRupee size={20} />
-                </div>
-            </div>
-             <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-                <div>
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Active Tenants</p>
-                    <h3 className="text-2xl font-black text-slate-900">{MOCK_GLOBAL_STATS.activeTenants}</h3>
-                </div>
-                <div className="h-10 w-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center">
-                    <Users size={20} />
-                </div>
-            </div>
-             <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-                <div>
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">System Uptime</p>
-                    <h3 className="text-2xl font-black text-slate-900">99.99%</h3>
-                </div>
-                <div className="h-10 w-10 bg-green-50 text-green-600 rounded-lg flex items-center justify-center">
-                    <Activity size={20} />
-                </div>
-            </div>
-        </div>
+        {/* New Platform Stats Component */}
+        <PlatformStats />
 
         {/* Tenant Table */}
         <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">

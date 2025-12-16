@@ -1,19 +1,15 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, List, Mic, Grid, Menu } from 'lucide-react';
+import { Mic } from 'lucide-react';
 import { NavItem } from '../types';
 
-const BottomNav: React.FC = () => {
+interface BottomNavProps {
+  tabs: NavItem[];
+}
+
+const BottomNav: React.FC<BottomNavProps> = ({ tabs }) => {
   const navigate = useNavigate();
   const location = useLocation();
-
-  const navItems: NavItem[] = [
-    { label: 'Home', path: '/agent/dashboard', icon: LayoutDashboard },
-    { label: 'Leads', path: '/agent/leads', icon: List },
-    { label: 'Bolkar', path: '/agent/bolkar', icon: Mic },
-    { label: 'Tools', path: '/agent/tools', icon: Grid },
-    { label: 'More', path: '/agent/settings', icon: Menu },
-  ];
 
   const handleNavClick = (path: string) => {
     navigate(path);
@@ -21,14 +17,15 @@ const BottomNav: React.FC = () => {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-slate-200 flex items-center justify-between px-2 z-50 pb-safe shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-      {navItems.map((item) => {
-        const isActive = location.pathname === item.path;
+      {tabs.map((item) => {
+        const isActive = location.pathname.includes(item.path);
         const Icon = item.icon;
         
-        // Special styling for Center Mic button (Floating)
-        if (item.label === 'Bolkar') {
+        // Special styling for Center Mic button (Floating) - Mapped to 'Bolkar' or 'SiteOps' if desired
+        // For this refactor, we keep 'Bolkar' as the trigger for the floating mic
+        if (item.key === 'SiteOps' || item.label === 'Bolkar') {
           return (
-            <div key={item.path} className="relative w-1/5 flex justify-center">
+            <div key={item.key} className="relative w-1/5 flex justify-center">
               <button
                 onClick={() => handleNavClick(item.path)}
                 className="absolute -top-10"
@@ -47,7 +44,7 @@ const BottomNav: React.FC = () => {
 
         return (
           <button
-            key={item.path}
+            key={item.key}
             onClick={() => handleNavClick(item.path)}
             className={`flex flex-col items-center justify-center w-1/5 h-full space-y-1 transition-colors active:bg-slate-50 ${
               isActive ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'

@@ -1,115 +1,136 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Shield, Briefcase, User, Wrench, X } from 'lucide-react';
+import { Shield, Briefcase, User, Wrench, X, RefreshCw } from 'lucide-react';
 import { UserRole } from '../types';
 
 const DevRoleSwitcher: React.FC = () => {
-    const { user, login, updateProfile } = useAuth();
-    const navigate = useNavigate();
-    const [isOpen, setIsOpen] = useState(false);
+  const { user, userProfile, updateProfile } = useAuth();
+  const [isOpen, setIsOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-    const handleSwitch = async (role: UserRole) => {
-        // 1. Ensure User is Logged In (Mock)
-        if (!user) {
-            await login('+919999999999');
+  // Only show if user is logged in
+  if (!user) return null;
+
+  const handleSwitch = async (role: UserRole) => {
+    if (!user) return;
+    setLoading(true);
+    try {
+      // Create a dummy profile update to force the role change in DB/Context
+      // This persists across reloads because it writes to Firestore
+      await updateProfile({
+        uid: user.uid,
+        phoneNumber: user.phoneNumber || '',
+        role: role,
+        name: userProfile?.name || 'Dev User',
+        is_active: true,
+        tenantId: userProfile?.tenantId || 'dev_tenant',
+        // Mock permissions based on role to ensure UI renders correctly
+        permissions: role === 'business_owner' ? {
+            can_create_ads: true,
+            can_manage_team: true,
+            can_view_leads: true,
+            can_view_roi: true,
+            can_access_site: true
+        } : role === 'super_admin' ? {
+            can_create_ads: true,
+            can_manage_team: true,
+            can_view_leads: true,
+            can_view_roi: true,
+            can_access_site: true
+        } : {
+             can_create_ads: false,
+             can_manage_team: false,
+             can_view_leads: true,
+             can_view_roi: false,
+             can_access_site: true
         }
+      });
+      
+      // Force reload to ensure all guards and layouts re-evaluate
+      // FIX: Do not reload for dev user as session is in-memory and will be lost
+      if (!user.uid.startsWith('dev_')) {
+          window.location.reload();
+      }
+      
+      setIsOpen(false);
+    } catch (error) {
+      console.error("Failed to switch role", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-        // 2. Define Mock Profile based on Role
-        let mockProfile: any = {
-            uid: user?.uid || 'dev_user_uid',
-            phoneNumber: '+919999999999',
-            is_active: true,
-            createdAt: new Date().toISOString(),
-            role: role
-        };
-
-        let targetPath = '/';
-
-        switch (role) {
-            case 'super_admin':
-                mockProfile.name = 'Dev Super Admin';
-                targetPath = '/platform/overview';
-                break;
-            case 'business_owner':
-                mockProfile.name = 'Dev Business Owner';
-                mockProfile.tenantId = 'dev_tenant_01';
-                targetPath = '/app/dashboard';
-                break;
-            case 'agent':
-                mockProfile.name = 'Dev Agent';
-                mockProfile.tenantId = 'dev_tenant_01';
-                targetPath = '/agent/dashboard';
-                break;
-        }
-
-        // 3. Update Context & Navigate
-        updateProfile(mockProfile);
-        navigate(targetPath);
-        setIsOpen(false);
-    };
-
+  if (!isOpen) {
     return (
-        <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end gap-2">
-            {isOpen && (
-                <div className="bg-white rounded-xl shadow-2xl border border-slate-200 p-2 flex flex-col gap-1 w-56 mb-2 animate-in slide-in-from-bottom-5 duration-200">
-                    <div className="px-3 py-2 border-b border-slate-100 flex justify-between items-center">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Dev Switcher</span>
-                        <button onClick={() => setIsOpen(false)} className="text-slate-400 hover:text-slate-600">
-                            <X size={14} />
-                        </button>
-                    </div>
-                    
-                    <button 
-                        onClick={() => handleSwitch('super_admin')}
-                        className="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-purple-50 text-left group transition-colors"
-                    >
-                        <div className="h-8 w-8 rounded-md bg-purple-100 text-purple-600 flex items-center justify-center group-hover:bg-purple-600 group-hover:text-white transition-colors">
-                            <Shield size={16} />
-                        </div>
-                        <div>
-                            <p className="text-xs font-bold text-slate-700">Super Admin</p>
-                            <p className="text-[10px] text-slate-400">/platform</p>
-                        </div>
-                    </button>
-
-                    <button 
-                        onClick={() => handleSwitch('business_owner')}
-                        className="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-blue-50 text-left group transition-colors"
-                    >
-                        <div className="h-8 w-8 rounded-md bg-blue-100 text-blue-600 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                            <Briefcase size={16} />
-                        </div>
-                        <div>
-                            <p className="text-xs font-bold text-slate-700">Business Owner</p>
-                            <p className="text-[10px] text-slate-400">/app</p>
-                        </div>
-                    </button>
-
-                    <button 
-                        onClick={() => handleSwitch('agent')}
-                        className="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-green-50 text-left group transition-colors"
-                    >
-                         <div className="h-8 w-8 rounded-md bg-green-100 text-green-600 flex items-center justify-center group-hover:bg-green-600 group-hover:text-white transition-colors">
-                            <User size={16} />
-                        </div>
-                        <div>
-                            <p className="text-xs font-bold text-slate-700">Agent</p>
-                            <p className="text-[10px] text-slate-400">/agent</p>
-                        </div>
-                    </button>
-                </div>
-            )}
-
-            <button
-                onClick={() => setIsOpen(!isOpen)}
-                className="h-12 w-12 bg-slate-900 text-white rounded-full shadow-xl flex items-center justify-center hover:bg-slate-800 transition-transform active:scale-95 border-2 border-slate-700"
-                title="Developer Tools"
-            >
-                <Wrench size={20} />
-            </button>
-        </div>
+      <button 
+        onClick={() => setIsOpen(true)}
+        className="fixed bottom-4 right-4 z-[9999] h-12 w-12 bg-slate-900 text-white rounded-full flex items-center justify-center shadow-xl hover:scale-110 transition-transform opacity-50 hover:opacity-100"
+        title="Dev Tools"
+      >
+        <Wrench size={20} />
+      </button>
     );
+  }
+
+  return (
+    <div className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden animate-in zoom-in-95 duration-200">
+        <div className="bg-slate-900 p-4 flex items-center justify-between text-white">
+          <div className="flex items-center gap-2">
+            <Wrench size={18} />
+            <h3 className="font-bold">Dev Role Switcher</h3>
+          </div>
+          <button onClick={() => setIsOpen(false)} className="text-slate-400 hover:text-white">
+            <X size={20} />
+          </button>
+        </div>
+        
+        <div className="p-4 space-y-4">
+          <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+             <p className="text-xs text-slate-500 mb-1">Current User</p>
+             <p className="font-mono text-xs text-slate-900 break-all">{user.uid}</p>
+             <div className="mt-2 flex items-center justify-between">
+                <span className="text-xs text-slate-500">Role</span>
+                <span className="font-bold uppercase text-blue-600 text-xs bg-blue-50 px-2 py-1 rounded">{userProfile?.role || 'None'}</span>
+             </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-2">
+            <button 
+              onClick={() => handleSwitch('super_admin')}
+              disabled={loading}
+              className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 hover:bg-purple-50 hover:border-purple-200 hover:text-purple-700 transition-colors text-sm font-medium"
+            >
+              <Shield size={16} /> Switch to Super Admin
+            </button>
+            <button 
+               onClick={() => handleSwitch('business_owner')}
+               disabled={loading}
+               className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700 transition-colors text-sm font-medium"
+            >
+              <Briefcase size={16} /> Switch to Business Owner
+            </button>
+            <button 
+               onClick={() => handleSwitch('agent')}
+               disabled={loading}
+               className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 hover:bg-green-50 hover:border-green-200 hover:text-green-700 transition-colors text-sm font-medium"
+            >
+              <User size={16} /> Switch to Agent
+            </button>
+          </div>
+
+          <div className="border-t border-slate-100 pt-4">
+             <button 
+                onClick={() => window.location.reload()}
+                className="w-full py-2 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold flex items-center justify-center gap-2 hover:bg-slate-200 transition-colors"
+             >
+                <RefreshCw size={14} /> Force Reload App
+             </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default DevRoleSwitcher;

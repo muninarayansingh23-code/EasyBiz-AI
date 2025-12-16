@@ -1,12 +1,13 @@
 import { UserProfile, VoiceLog, Lead } from '../types';
 
-export const MOCK_USERS: UserProfile[] = [
+export const MOCK_USERS: (UserProfile & { status?: string })[] = [
   {
     uid: 'u1',
     name: 'Rajesh Kumar',
     phoneNumber: '+919876543210',
     role: 'business_owner',
     is_active: true,
+    status: 'active'
   },
   {
     uid: 'u2',
@@ -15,7 +16,17 @@ export const MOCK_USERS: UserProfile[] = [
     role: 'agent',
     tenantId: 'RAJ123',
     is_active: true,
+    status: 'active'
   },
+  {
+    uid: 'u3',
+    name: 'Pending Agent',
+    phoneNumber: '+919000000000',
+    role: 'agent',
+    tenantId: 'RAJ123',
+    is_active: false,
+    status: 'invited' // Specific status for logic fork
+  }
 ];
 
 export const MOCK_LOGS: VoiceLog[] = [
@@ -134,4 +145,15 @@ export const MOCK_AGENTS = [
     { id: 3, name: "Rahul Deshmukh", status: "offline", leads: 15, msgs: 20, conversion: 2.4 },
     { id: 4, name: "Anita Roy", status: "online", leads: 22, msgs: 60, conversion: 6.5 },
     { id: 5, name: "John Doe", status: "offline", leads: 5, msgs: 10, conversion: 1.2 },
+];
+
+export const MOCK_ALL_USERS = [
+  { id: 1, name: "Rajesh Kumar", role: "Business Owner", company: "Skyline Realty", status: "Active" },
+  { id: 2, name: "Suresh Singh", role: "Business Owner", company: "Dream Homes", status: "Active" },
+  { id: 3, name: "Vikram Singh", role: "Agent", company: "Skyline Realty", status: "Active" },
+  { id: 4, name: "Priya Verma", role: "Agent", company: "Dream Homes", status: "Active" },
+  { id: 5, name: "Anil Gupta", role: "Business Owner", company: "City Constructions", status: "Banned" },
+  { id: 6, name: "John Doe", role: "Agent", company: "Urban Spaces", status: "Active" },
+  { id: 7, name: "Jane Smith", role: "Super Admin", company: "EazyBiz Platform", status: "Active" },
+  { id: 8, name: "Rahul Deshmukh", role: "Agent", company: "Dream Homes", status: "Active" },
 ];

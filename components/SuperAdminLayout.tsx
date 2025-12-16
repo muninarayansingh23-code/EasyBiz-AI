@@ -1,6 +1,6 @@
 import React from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
-import { LayoutDashboard, Building2, CreditCard, FileText, LogOut } from 'lucide-react';
+import { LayoutDashboard, Building2, CreditCard, FileText, LogOut, Users } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const SuperAdminLayout: React.FC = () => {
@@ -9,6 +9,7 @@ const SuperAdminLayout: React.FC = () => {
   const navItems = [
     { label: 'Overview', path: '/platform/overview', icon: LayoutDashboard },
     { label: 'Tenants', path: '/platform/tenants', icon: Building2 },
+    { label: 'Users', path: '/platform/users', icon: Users },
     { label: 'Subscriptions', path: '/platform/subscriptions', icon: CreditCard },
     { label: 'System Logs', path: '/platform/logs', icon: FileText },
   ];

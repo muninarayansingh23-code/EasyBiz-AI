@@ -1,23 +1,38 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, onAuthStateChanged, signInAnonymously, signOut } from 'firebase/auth';
-import { auth } from '../lib/firebase';
-import { getUserProfile, createProfile } from '../lib/db';
-import { UserProfile } from '../types';
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
+import { 
+  User, 
+  onAuthStateChanged, 
+  signInWithPhoneNumber, 
+  ConfirmationResult, 
+  ApplicationVerifier, 
+  signOut
+} from "firebase/auth";
+import { doc, getDoc, setDoc, deleteDoc } from "firebase/firestore";
+import { auth, db } from '../lib/firebase';
+import { UserProfile, BusinessProfile } from '../types';
+import { createOwnerProfile, createProfile } from '../lib/db';
+
+// Types representing the Identity Fork Status
+export type UserStatus = 'NEW_USER' | 'INVITED' | 'ACTIVE' | null;
 
 interface AuthContextType {
   user: User | null;
   userProfile: UserProfile | null;
+  userStatus: UserStatus;
   loading: boolean;
-  login: (phoneNumber: string) => Promise<void>;
+  loginWithPhone: (phoneNumber: string, appVerifier: ApplicationVerifier | null) => Promise<void>;
+  verifyOTP: (otp: string) => Promise<UserStatus>;
   logout: () => void;
-  updateProfile: (profile: UserProfile) => Promise<void>;
+  updateProfile: (profile: UserProfile, companyData?: Partial<BusinessProfile>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   userProfile: null,
+  userStatus: null,
   loading: true,
-  login: async () => {},
+  loginWithPhone: async () => {},
+  verifyOTP: async () => 'NEW_USER',
   logout: () => {},
   updateProfile: async () => {},
 });
@@ -27,80 +42,165 @@ export const useAuth = () => useContext(AuthContext);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [userStatus, setUserStatus] = useState<UserStatus>(null);
   const [loading, setLoading] = useState(true);
   
-  // Temporary storage for phone number during onboarding flow
-  // (Since we are using anonymous auth to simulate phone auth for this phase)
-  const [tempPhone, setTempPhone] = useState<string>('');
+  const confirmationResultRef = useRef<ConfirmationResult | null>(null);
 
-  useEffect(() => {
-    // Listen for Firebase Auth state changes
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setUser(firebaseUser);
+  // --- THE LOGIC FORK (Crucial) ---
+  const checkUserStatus = async (firebaseUser: User): Promise<{ status: UserStatus; profile: UserProfile | null }> => {
+    // REMOVED: God Mode / Mock User Checks
+    // We are now running purely on Live Firebase Data
 
-      if (firebaseUser) {
-        // User is signed in, fetch their profile from Firestore
-        const profile = await getUserProfile(firebaseUser.uid);
-        setUserProfile(profile);
-      } else {
-        // User is signed out
-        setUserProfile(null);
+    try {
+      // Step 2: Lookup by UID (Normal Path - Already Registered)
+      const uidRef = doc(db, 'users', firebaseUser.uid);
+      const uidSnap = await getDoc(uidRef);
+
+      if (uidSnap.exists()) {
+        const data = uidSnap.data() as UserProfile;
+        return { status: 'ACTIVE', profile: data };
       }
-      
+
+      // Step 3: Lookup by Phone Number (The "Invited" Path)
+      if (firebaseUser.phoneNumber) {
+         const phoneRef = doc(db, 'users', firebaseUser.phoneNumber);
+         const phoneSnap = await getDoc(phoneRef);
+         
+         if (phoneSnap.exists()) {
+            return { status: 'INVITED', profile: phoneSnap.data() as UserProfile };
+         }
+      }
+
+      // Step 4: No profile found
+      return { status: 'NEW_USER', profile: null };
+
+    } catch (err: any) {
+      console.error("Error checking user status:", err);
+      alert(`Firebase DB Error: ${err.message}`);
+      // Default to new user on error to allow retry/setup
+      return { status: 'NEW_USER', profile: null };
+    }
+  };
+
+  // Listen to Auth State Changes
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      if (currentUser) {
+        // User is signed in. Check DB.
+        const { status, profile } = await checkUserStatus(currentUser);
+        setUser(currentUser);
+        setUserProfile(profile);
+        setUserStatus(status);
+      } else {
+        // User is signed out.
+        setUser(null);
+        setUserProfile(null);
+        setUserStatus(null);
+      }
       setLoading(false);
     });
 
     return () => unsubscribe();
   }, []);
 
-  const login = async (phoneNumber: string) => {
+  const loginWithPhone = async (phoneNumber: string, appVerifier: ApplicationVerifier | null) => {
+    try {
+      // REMOVED: Dev Bypass logic. Always use real Auth.
+      
+      if (!appVerifier) {
+          const msg = "Recaptcha not initialized. Please refresh.";
+          alert(msg);
+          throw new Error(msg);
+      }
+
+      const formattedNumber = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber.replace(/\D/g, '')}`;
+      const confirmationResult = await signInWithPhoneNumber(auth, formattedNumber, appVerifier);
+      confirmationResultRef.current = confirmationResult;
+    } catch (error: any) {
+      console.error("Error sending OTP:", error);
+      alert(`Firebase Auth Error: ${error.message}`);
+      throw error;
+    }
+  };
+
+  const verifyOTP = async (otp: string): Promise<UserStatus> => {
     setLoading(true);
     try {
-      setTempPhone(phoneNumber);
-      // For Phase 1 backend connection without full Recaptcha UI setup,
-      // we use signInAnonymously to establish a valid Firebase UID session.
-      // In a full production Phone Auth flow, this would be signInWithPhoneNumber.
-      await signInAnonymously(auth);
-    } catch (error) {
-      console.error("Login Error:", error);
-      setLoading(false);
+      if (!confirmationResultRef.current) {
+        throw new Error("No OTP request found");
+      }
+
+      // Confirm OTP (Real)
+      const result = await confirmationResultRef.current.confirm(otp);
+      const firebaseUser = result.user;
+      
+      const { status, profile } = await checkUserStatus(firebaseUser);
+      
+      setUser(firebaseUser);
+      setUserProfile(profile);
+      setUserStatus(status);
+
+      return status;
+    } catch (error: any) {
+      console.error("Error verifying OTP:", error);
+      alert(`Verification Failed: ${error.message}`);
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
   const logout = async () => {
     try {
       await signOut(auth);
-      setTempPhone('');
+      setUser(null);
+      setUserProfile(null);
+      setUserStatus(null);
+      confirmationResultRef.current = null;
     } catch (error) {
-      console.error("Logout Error:", error);
+      console.error("Logout failed", error);
     }
   };
 
-  const updateProfile = async (profile: UserProfile) => {
+  const updateProfile = async (profileData: UserProfile, companyData?: Partial<BusinessProfile>) => {
     if (!user) return;
 
     try {
-      // Ensure we attach the phone number if it wasn't in the profile object
-      // (Handling the case where we passed it from Login screen -> AuthContext -> Onboarding)
-      const profileData = { 
-        ...profile, 
-        uid: user.uid,
-        phoneNumber: profile.phoneNumber || tempPhone 
-      };
+      let finalProfile: UserProfile = { ...profileData, uid: user.uid };
 
-      await createProfile(user.uid, profileData);
+      if (profileData.role === 'business_owner' && companyData) {
+         finalProfile = await createOwnerProfile(user.uid, profileData, companyData) as UserProfile;
+      } 
+      else if (userStatus === 'INVITED' && user.phoneNumber) {
+         await createProfile(user.uid, finalProfile);
+         const phoneRef = doc(db, 'users', user.phoneNumber);
+         await deleteDoc(phoneRef); 
+      } 
+      else {
+         await createProfile(user.uid, finalProfile);
+      }
       
-      // Update local state immediately for UI responsiveness
-      setUserProfile(profileData);
-    } catch (error) {
+      setUserProfile(finalProfile);
+      setUserStatus('ACTIVE'); 
+    } catch (error: any) {
       console.error("Update Profile Error:", error);
+      alert(`Profile Update Failed: ${error.message}`);
       throw error;
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, userProfile, loading, login, logout, updateProfile }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      userProfile, 
+      userStatus, 
+      loading, 
+      loginWithPhone, 
+      verifyOTP, 
+      logout, 
+      updateProfile 
+    }}>
       {children}
     </AuthContext.Provider>
   );

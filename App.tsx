@@ -4,74 +4,56 @@ import { AuthProvider } from './context/AuthContext';
 import AuthGuard from './components/AuthGuard';
 import DevRoleSwitcher from './components/DevRoleSwitcher';
 
+// Screens / Stacks
 import Login from './components/Login';
 import Onboarding from './components/Onboarding';
 
-// Layouts
-import AgentLayout from './components/AgentLayout';
-import BusinessLayout from './components/BusinessLayout';
+// Layouts / Navigators
+import MainTabNavigator from './components/MainTabNavigator';
 import SuperAdminLayout from './components/SuperAdminLayout';
 
-// Pages
-import BolkarRecorder from './components/BolkarRecorder';
-import LeadsPage from './components/LeadsPage';
-import SettingsPage from './components/SettingsPage';
+// Content Screens
 import AgentDashboard from './components/AgentDashboard';
-import PlaceholderPage from './components/PlaceholderPage';
-import ToolsPage from './components/ToolsPage';
 import BusinessDashboard from './components/BusinessDashboard';
-import SuperAdminDashboard from './components/SuperAdminDashboard';
-import TenantManagement from './components/TenantManagement';
+import LeadsPage from './components/LeadsPage';
+import BolkarRecorder from './components/BolkarRecorder';
+import ToolsPage from './components/ToolsPage';
 import TeamManagement from './components/TeamManagement';
 import PipelineBoard from './components/PipelineBoard';
+import PlaceholderPage from './components/PlaceholderPage';
+import TenantManagement from './components/TenantManagement';
+import SuperAdminDashboard from './components/SuperAdminDashboard';
+import SettingsPage from './components/SettingsPage';
+import GlobalUserList from './components/GlobalUserList';
 
+// Helper Component to route Dashboard based on Role within the Main Tab
+import { useAuth } from './context/AuthContext';
+const UnifiedDashboardRouter = () => {
+    const { userProfile } = useAuth();
+    if (userProfile?.role === 'business_owner') return <BusinessDashboard />;
+    return <AgentDashboard />;
+};
+
+// "AppNavigator" Logic
 const App: React.FC = () => {
   return (
     <AuthProvider>
       <HashRouter>
-        {/* Developer Tool: Visible on all pages for easy testing */}
+        {/* Dev Tool: Helps simulate Role Switching for testing Navigators */}
         <DevRoleSwitcher />
 
         <Routes>
-          {/* Public Routes */}
+          {/* --- Auth Stack --- */}
           <Route path="/login" element={<Login />} />
           
-          {/* Protected Onboarding (Must be Auth, but No Profile) */}
+          {/* --- Onboarding Stack (NEW_USER / INVITED) --- */}
           <Route path="/onboarding" element={
             <AuthGuard>
               <Onboarding />
             </AuthGuard>
           } />
 
-          {/* Agent Routes */}
-          <Route path="/agent" element={
-            <AuthGuard allowedRoles={['agent']}>
-              <AgentLayout />
-            </AuthGuard>
-          }>
-            <Route path="dashboard" element={<AgentDashboard />} />
-            <Route path="leads" element={<LeadsPage />} />
-            <Route path="bolkar" element={<BolkarRecorder />} />
-            <Route path="tools" element={<ToolsPage />} />
-            <Route path="settings" element={<SettingsPage />} />
-            <Route index element={<Navigate to="dashboard" replace />} />
-          </Route>
-
-          {/* Business Owner Routes */}
-          <Route path="/app" element={
-            <AuthGuard allowedRoles={['business_owner']}>
-              <BusinessLayout />
-            </AuthGuard>
-          }>
-            <Route path="dashboard" element={<BusinessDashboard />} />
-            <Route path="crm" element={<PipelineBoard />} />
-            <Route path="growth" element={<PlaceholderPage />} />
-            <Route path="team" element={<TeamManagement />} />
-            <Route path="settings" element={<PlaceholderPage />} />
-            <Route index element={<Navigate to="dashboard" replace />} />
-          </Route>
-
-          {/* Super Admin Routes */}
+          {/* --- SuperAdmin Stack --- */}
           <Route path="/platform" element={
             <AuthGuard allowedRoles={['super_admin']}>
               <SuperAdminLayout />
@@ -79,12 +61,45 @@ const App: React.FC = () => {
           }>
             <Route path="overview" element={<SuperAdminDashboard />} />
             <Route path="tenants" element={<TenantManagement />} />
+            <Route path="users" element={<GlobalUserList />} />
             <Route path="subscriptions" element={<PlaceholderPage />} />
             <Route path="logs" element={<PlaceholderPage />} />
-            <Route path="settings" element={<PlaceholderPage />} />
             <Route index element={<Navigate to="overview" replace />} />
           </Route>
 
+          {/* --- Main Tab Navigator (Unified App Stack) --- */}
+          {/* This handles both Agents and Owners via permissions */}
+          <Route path="/app" element={
+            <AuthGuard allowedRoles={['agent', 'business_owner']}>
+              <MainTabNavigator />
+            </AuthGuard>
+          }>
+            
+            {/* HomeDashboard */}
+            <Route path="dashboard" element={<UnifiedDashboardRouter />} />
+            
+            {/* SalesInbox */}
+            <Route path="leads" element={<LeadsPage />} />
+            <Route path="crm" element={<PipelineBoard />} />
+            
+            {/* SiteOps */}
+            <Route path="bolkar" element={<BolkarRecorder />} />
+            
+            {/* GrowthStudio */}
+            <Route path="growth" element={<ToolsPage />} />
+            
+            {/* TeamManager */}
+            <Route path="team" element={<TeamManagement />} />
+            
+            {/* Settings */}
+            <Route path="settings" element={<SettingsPage />} />
+
+            <Route index element={<Navigate to="dashboard" replace />} />
+          </Route>
+
+          {/* Legacy Redirects for compatibility */}
+          <Route path="/agent/*" element={<Navigate to="/app/bolkar" replace />} />
+          
           {/* Root Redirect */}
           <Route path="/" element={<AuthGuard><div /></AuthGuard>} />
           <Route path="*" element={<Navigate to="/" replace />} />

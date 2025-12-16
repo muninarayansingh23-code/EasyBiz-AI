@@ -6,19 +6,19 @@ import { getAnalytics, isSupported } from "firebase/analytics";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyBzgZRhveqavaubRbMhCGuJoxs9NTlqcEA",
-  authDomain: "easybiz-ai-72a6a.firebaseapp.com",
-  projectId: "easybiz-ai-72a6a",
-  storageBucket: "easybiz-ai-72a6a.firebasestorage.app",
-  messagingSenderId: "317413849408",
-  appId: "1:317413849408:web:d3d4670e44fc17076862a5",
-  measurementId: "G-BCXWMNR5SL"
+  apiKey: "AIzaSyCiayzqc2spxXUf5taQMM-C8zmbGdjn9h8",
+  authDomain: "easybiz-ai-fdb39.firebaseapp.com",
+  projectId: "easybiz-ai-fdb39",
+  storageBucket: "easybiz-ai-fdb39.firebasestorage.app",
+  messagingSenderId: "719089106222",
+  appId: "1:719089106222:web:c9fe9ef0b2dd2a7db30ebf",
+  measurementId: "G-3SHJH5LFFZ"
 };
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Initialize Analytics conditionally to prevent errors if not supported
+// Initialize Analytics conditionally
 let analytics;
 isSupported().then((supported) => {
   if (supported) {

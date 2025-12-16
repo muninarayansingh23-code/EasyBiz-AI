@@ -9,7 +9,7 @@ interface AuthGuardProps {
 }
 
 const AuthGuard: React.FC<AuthGuardProps> = ({ children, allowedRoles }) => {
-  const { user, userProfile, loading } = useAuth();
+  const { user, userProfile, userStatus, loading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -24,31 +24,35 @@ const AuthGuard: React.FC<AuthGuardProps> = ({ children, allowedRoles }) => {
       return;
     }
 
-    // 2. No Profile -> Onboarding
-    // Allow access to onboarding if they have no profile, but prevent loop if already there
-    if (!userProfile) {
+    // 2. Routing Logic Fork based on Status
+    
+    // Status: NEW_USER or INVITED -> Must go to Onboarding
+    if (userStatus === 'NEW_USER' || userStatus === 'INVITED') {
       if (location.pathname !== '/onboarding') {
         navigate('/onboarding');
       }
       return;
     }
 
-    // 3. Has Profile -> Traffic Cop Logic
-    // If user tries to access login, onboarding, or root while having a profile, redirect them
-    if (location.pathname === '/login' || location.pathname === '/onboarding' || location.pathname === '/') {
-        redirectUserBasedOnRole(userProfile.role);
-        return;
+    // Status: ACTIVE -> Traffic Cop Logic
+    if (userStatus === 'ACTIVE') {
+       // Prevent access to login/onboarding if active
+       if (location.pathname === '/login' || location.pathname === '/onboarding' || location.pathname === '/') {
+           redirectUserBasedOnRole(userProfile?.role);
+           return;
+       }
+       
+       // Role Protection
+       if (allowedRoles && userProfile) {
+         if (!allowedRoles.includes(userProfile.role || '')) {
+           redirectUserBasedOnRole(userProfile.role);
+         }
+       }
     }
 
-    // 4. Role Protection
-    if (allowedRoles && !allowedRoles.includes(userProfile.role || '')) {
-      // Unauthorized access attempt, redirect to their home
-      redirectUserBasedOnRole(userProfile.role);
-    }
+  }, [user, userProfile, userStatus, loading, navigate, location.pathname, allowedRoles]);
 
-  }, [user, userProfile, loading, navigate, location.pathname, allowedRoles]);
-
-  const redirectUserBasedOnRole = (role: string | null) => {
+  const redirectUserBasedOnRole = (role: string | null | undefined) => {
     switch (role) {
       case 'super_admin':
         navigate('/platform/overview');
@@ -57,10 +61,10 @@ const AuthGuard: React.FC<AuthGuardProps> = ({ children, allowedRoles }) => {
         navigate('/app/dashboard');
         break;
       case 'agent':
-        navigate('/agent/bolkar');
+        navigate('/agent/bolkar'); // Agents land on Bolkar/Mic
         break;
       default:
-        navigate('/login');
+        navigate('/app/dashboard');
     }
   };
 
